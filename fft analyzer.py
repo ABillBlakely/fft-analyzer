@@ -1,95 +1,84 @@
 import numpy as np
+from collections import deque
+import sounddevice as sd
 import matplotlib.pyplot as plt
-import pyaudio
-import time
-from timeit import timeit
+from matplotlib.animation import FuncAnimation 
+# import time
 
-def fftOfBuffer(audio_buffer, sample_rate, buffer_size, output_in_dB=True):
-    """  Converts the audio_buffer to frequency domain."""
-    freq_axis = np.linspace(0, sample_rate/2, buffer_size/2, endpoint=False)
-    window = np.kaiser(buffer_size, 7)
-    signal_freq = np.fft.rfft(audio_buffer * window) * 2 / buffer_size
-    if output_in_dB is True:
-        return(20 * np.log10(np.abs(signal_freq[:-1])), freq_axis)
-    else:
-        return(signal_freq[:-1], freq_axis)
+Fs = 48000
+buf_size = 2048
+fft_size = 4096
 
+indataq = deque(maxlen=10)
 
-class plotFFT:
-    """Helper for drawing plots of fft data.
+# Default device is manually set, list possibilities with the print commands.
+# sd.default.in
+print(sd.query_devices())
+# print(sd.query_hostapis())
 
-    Uses matplotlib to draw plots that update with every call
-    to draw_plot."""
+# for now use stereo channels with left and right.
+sd.default.channels = 2
+# Some aliases to make things readable.
+LEFT = 0
+RIGHT = 1
 
-    def __init__(self, style='bmh'):
-        plt.ion()
-        plt.show()
-        self.fig = plt.figure()
-        self.plot = plt.subplot(111)
-        self.style = style
+# Most of the defaults are here for easy config.
 
-    def draw_plot(self, signal_in_freq_domain, freq_axis):
-        self.plot.cla()
-        with plt.style.context(self.style):
-            self.plot.semilogx(freq_axis, signal_in_freq_domain)
-            self.plot.set_ylim(-120, 10)
-            self.plot.set_xlim(20, 20000)
-            plt.pause(0.001)
-
-    def close(self):
-        plt.close(self.fig)
+# sd.default.dtype = 'float32'
+# sd.default.latency = 'low'
+sd.default.samplerate = Fs
+sd.default.blocksize = buf_size
+# sd.default.clip_off = False
+sd.default.dither_off = True
+sd.default.never_drop_input = False
+sd.default.prime_output_buffers_using_stream_callback = False
+# sd.default.reset()
 
 
-sample_rate = 48000
-buffer_size = 2048
-channels = 1
-byte_depth = 2  # Called width in pyaudio speak.
-
-p = pyaudio.PyAudio()
-
-# This creates a list of the possible hosts For now it prints their names.
-available_hosts = []
-for n in range(p.get_host_api_count()):
-    available_hosts.append(p.get_host_api_info_by_index(n))
-for host in available_hosts:
-    print("Available audio drivers:", host['name'])
-
-external_data = np.zeros(buffer_size, dtype=np.float32)
+def output_signal(freq, Fs, buf_size):
+    '''Create the signal for output'''
+    None
 
 
-def audio_callback(in_data, buffer_size, time_info, status):
-    """Called by the stream whenever a new buffer is available."""
-    global external_data
-    external_data = np.fromstring(in_data, dtype=np.float32)
-    return(in_data, pyaudio.paContinue)
+def audio_callback(indata, outdata, frames, time, status):
+    '''Called by audio stream for each new buffer.'''
+    indataq.append(indata[::, LEFT])
 
-# Create and run the stream
-audio_stream = p.open(rate=sample_rate,
-                      channels=channels,
-                      format=pyaudio.paFloat32,
-                      frames_per_buffer=buffer_size,
-                      input=True,
-                      output=True,
-                      input_device_index=None,
-                      output_device_index=None,
-                      stream_callback=audio_callback,
-                      start=True,
-                      )
 
-plot0 = plotFFT()
+def plot_init():
+    '''Provide blank data to the animation.'''
+    line.set_data([], [])
+    return line,
 
-if audio_stream.is_active() is True:
-    # time.sleep(1)
-    for n in range(20):
-        fftOfBuffer(external_data, sample_rate, buffer_size)
-        sig_freq, freq_axis = fftOfBuffer(external_data,
-                                          sample_rate,
-                                          buffer_size)
-        plot0.draw_plot(sig_freq, freq_axis)
-        RMS_voltage = np.sqrt(np.sum(external_data ** 2) / buffer_size)
-        print("RMS level (dB):", 20 * np.log10(RMS_voltage))
 
-plot0.close()       
-audio_stream.close()
-print("all done")
-print(exit())
+def update_plot(frame):
+    '''Calculates and draws the new data.'''
+    try:
+        a_in = indataq.popleft()
+        mag = 20 * np.log10(np.abs(np.fft.rfft(a_in, n=fft_size) * 2 / buf_size))
+        line.set_data(freq, mag)
+    except Exception as e:
+        # Drawing speed is higher than the data load, which is good, but we
+        # can't have it throwing errors and coming to a halt.
+        None
+    return line,
+
+audio_stream = sd.Stream(callback=audio_callback)
+
+# Setup the display:
+freq = np.fft.rfftfreq(fft_size, 1.0 / Fs)
+fig = plt.figure()
+ax = plt.axes(xlim=(20, Fs / 2), ylim=(-150, 0))
+ax.set_xscale('log', basex=10)
+line, = ax.plot([], [])
+
+# Start the animation
+anim = FuncAnimation(fig,
+                     update_plot,
+                     # init_func=plot_init,
+                     interval=20,
+                     blit=True
+                     )
+
+with audio_stream:
+    plt.show()
