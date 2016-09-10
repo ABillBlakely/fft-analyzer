@@ -1,38 +1,20 @@
-import numpy as np
+'''Python Spectrum Analyzer'''
+
 from collections import deque
+from numpy import abs, fft, log10
 import sounddevice as sd
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation 
-# import time
+from matplotlib.animation import FuncAnimation
 
-Fs = 48000
-buf_size = 2048
-fft_size = 4096
+from args import arg
 
-indataq = deque(maxlen=10)
-
-# Default device is manually set, list possibilities with the print commands.
-# sd.default.in
-print(sd.query_devices())
-# print(sd.query_hostapis())
-
-# for now use stereo channels with left and right.
-sd.default.channels = 2
 # Some aliases to make things readable.
 LEFT = 0
 RIGHT = 1
 
-# Most of the defaults are here for easy config.
+print(sd.query_devices())
 
-# sd.default.dtype = 'float32'
-# sd.default.latency = 'low'
-sd.default.samplerate = Fs
-sd.default.blocksize = buf_size
-# sd.default.clip_off = False
-sd.default.dither_off = True
-sd.default.never_drop_input = False
-sd.default.prime_output_buffers_using_stream_callback = False
-# sd.default.reset()
+indataq = deque(maxlen=10)
 
 
 def output_signal(freq, Fs, buf_size):
@@ -43,6 +25,7 @@ def output_signal(freq, Fs, buf_size):
 def audio_callback(indata, outdata, frames, time, status):
     '''Called by audio stream for each new buffer.'''
     indataq.append(indata[::, LEFT])
+    outdata.fill(0)
 
 
 def plot_init():
@@ -55,20 +38,28 @@ def update_plot(frame):
     '''Calculates and draws the new data.'''
     try:
         a_in = indataq.popleft()
-        mag = 20 * np.log10(np.abs(np.fft.rfft(a_in, n=fft_size) * 2 / buf_size))
+        mag = 20 * log10(abs(fft.rfft(a_in, n=arg.fftsize) * 2 / arg.buffsize))
         line.set_data(freq, mag)
-    except Exception as e:
+    except:
         # Drawing speed is higher than the data load, which is good, but we
         # can't have it throwing errors and coming to a halt.
+        # This should probably be done a better way than try/except.
         None
     return line,
 
-audio_stream = sd.Stream(callback=audio_callback)
+audio_stream = sd.Stream(callback=audio_callback,
+                         channels=2,
+                         samplerate=arg.Fs,
+                         blocksize=arg.buffsize,
+                         clip_off=arg.clipoff,
+                         dither_off=arg.ditheroff
+                         )
+
 
 # Setup the display:
-freq = np.fft.rfftfreq(fft_size, 1.0 / Fs)
+freq = fft.rfftfreq(arg.fftsize, 1 / arg.Fs)
 fig = plt.figure()
-ax = plt.axes(xlim=(20, Fs / 2), ylim=(-150, 0))
+ax = plt.axes(xlim=arg.freq_lim, ylim=arg.mag_lim)
 ax.set_xscale('log', basex=10)
 line, = ax.plot([], [])
 
