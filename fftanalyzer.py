@@ -1,10 +1,11 @@
 
 import argparse
-import matplotlib.pyplot as plt
 import sounddevice as sd
 from collections import deque
-from matplotlib.animation import FuncAnimation
-from numpy import abs, fft, log10, seterr
+from numpy import abs, fft, log10, zeros_like
+from bokeh.plotting import figure, curdoc
+from bokeh.layouts import column
+from time import sleep
 
 parser = argparse.ArgumentParser(description=__doc__)
 
@@ -43,110 +44,100 @@ parser.add_argument('-y', '--ylims', nargs=2, action='store', type=int, metavar=
                     help='Freq axis limits in Hz. Default is %(default)s.')
 
 args = parser.parse_args()
-# print(args)
-# exit()
+
 if args.list_devices == True:
     print(sd.query_devices())
     exit()
 
-# Some aliases to make things readable.
-LEFT = 0
-RIGHT = 1
+
 
 # The Queue where the input data will be stored.
 indataQ = deque(maxlen=10)
 
-def audio_callback(indata, outdata, frames, time, status):
-        '''Called by audio stream for each new buffer.'''
-        indataQ.append(indata[::, LEFT])
-        outdata.fill(0)
-
-class audio_processor():
-    '''Creates stream and plot, performs math, starts and stops processing.'''
+class plot_controls():
 
     def __init__(self):
-        # Create the stream
+        # Determine the frequencies the dfft calculates at.
+        self.freq = fft.rfftfreq(args.fft_size, 1 / args.sample_rate)
+        self.mag = zeros_like(self.freq)
+        # Setup the display:
+        self.fig = figure(title='Spectrum',
+                     # tools='crosshair',
+                     x_axis_label='Freq (Hz)', x_axis_type = 'log',
+                     y_axis_label='Mag (dB)')
+        self.data = self.fig.circle(self.freq, self.mag, size=2)
+        # self.session = push_session(curdoc())
+        print('Plot initialized.')
+
+    def start_plot(self):
+
+        def plot_callback():
+            self.mag += 0.1
+            newdata = {'x':self.freq, 'y':self.mag}
+            self.data.data_source.data = newdata
+        curdoc().add_root(column(self.fig))
+        curdoc().add_periodic_callback(plot_callback, 1000)
+        print('Plot started.')
+
+    def stop_plot(self):
+        pass
+
+class stream_controls():
+
+    def __init__(self):
+
+        # Some aliases to make things readable.
+        LEFT = 0
+        RIGHT = 1
+
+        def audio_callback(indata, outdata, frames, time, status):
+                '''Called by audio stream for each new buffer.'''
+                indataQ.append(indata[::, LEFT])
+                outdata.fill(0)
+
         self.audio_stream = sd.Stream(callback=audio_callback,
                                       channels=2,
                                       samplerate=args.sample_rate,
                                       blocksize=args.buff_size,
                                       clip_off=True,
                                       dither_off=args.dither)
-        # Determine the frequencies the dfft calculates at.
-        self.freq = fft.rfftfreq(args.fft_size, 1 / args.sample_rate)
-        # Setup the display:
-        self.fig = plt.figure()
-        self.ax = plt.axes(xlim=args.xlims, ylim=args.ylims)
-        self.ax.set_xscale('log', basex=10)
-        self.line, = self.ax.plot([], [])
-        plt.ion()
-
-    def output_signal(freq, Fs, buf_size):
-        '''Create the signal for output'''
-        None
+        print('Stream initialized.')
 
     def start_stream(self):
         self.audio_stream.start()
+        while self.audio_stream.stopped == True:
+            pass
+        print('Stream started.' )
 
     def stop_stream(self):
         self.audio_stream.stop()
 
-    def reload(self):
+    def close_stream(self):
         self.audio_stream.close()
-        print('audio closed.')
-        plt.close()
-        print('plot closed.')
-        self.__init__()
-        print('re-init.')
-        self.start_plot()
-        print('plot started.')
-
-    def plot_init(self):
-        '''Provide blank data to the animation.'''
-        self.line.set_data([], [])
-        return self.line,
-
-    def update_plot(self, frame):
-        '''Calculates and draws the new data.'''
-        try:
-            a_in = indataQ.popleft()
-            mag = 20 * log10(abs(fft.rfft(a_in, n=args.fft_size) * 2 / args.buff_size))
-            self.line.set_data(self.freq, mag)
-        except IndexError:
-            # Occurs when indataQ is empty.
-            pass
-        except RuntimeWarning:
-            # Is thrown when the input data contains a zero.
-            pass
-        return self.line,
-
-    def start_plot(self):
-        # Start the animation
-        self.anim = FuncAnimation(self.fig,
-                             self.update_plot,
-                             init_func=self.plot_init,
-                             interval=2,
-                             blit=True
-                             )
-        plt.show()
-        # while self.audio_stream.active:
 
 def main():
-    stream = audio_processor()
-    stream.start_plot()
+    # stream = stream_controls()
+    # stream.start_stream()
+    plot = plot_controls()
+    plot.start_plot()
+    # w = input('Enter to kill...')
+    # stream.close_stream()
+    # plot.stop_plot()
+    # stream.start_plot()
+
+
+def loop():
     while True:
-        control = input("Enter 'q' to quit, 'l' to list devices, "
-                        "or press enter to start: ")
+        control = input("Enter 'q' to quit, 'l' to list devices")
+
         if control == 'q':
             exit()
         elif control == 'l':
             print(sd.query_devices())
             continue
-        elif control == '':
-            stream.start_stream()
+
         else:
             continue
-        input("Press enter to stop")
-        stream.stop_stream()
 
 main()
+loop()
