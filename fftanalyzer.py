@@ -1,91 +1,62 @@
-
-import argparse
-import sounddevice as sd
-from collections import deque
-from numpy import abs, fft, log10, zeros_like
-from bokeh.plotting import figure, curdoc
-from bokeh.layouts import column
+from functools import partial
 from time import sleep
 
-parser = argparse.ArgumentParser(description=__doc__)
-
-parser.add_argument('-b', '--buff-size', action='store', type=int,
-                    default=4096, #choices=[512,1024,2048,4096],
-                    help='Buffer size of audio stream.')
-
-parser.add_argument('-d', '--dither', action='store_false',
-                    help='Turn dithering on.') # Beware double negative: toggles sound devices 'dither_off' so false here turns dithering on.
-
-parser.add_argument('-s', '--sample-rate', action='store', type=int, metavar='RATE',
-                    default=48000, choices=[44100,48000,88200,96000],
-                    help=('Sample rate used by device. Not all choices can be used by all devices. '
-                          'Default is %(default)s, available choices are [%(choices)s].'))
-
-parser.add_argument('-l', '--list-devices', action='store_true',
-                    help='View available devices for this computer.')
-
-parser.add_argument( '-i', '--input-device',  action='store', type=int, metavar='DEV_ID',
-                    help="Integer value of device to use for input, see 'list-devices.'")
-
-parser.add_argument('-o', '--output-device', action='store', type=int, metavar='DEV_ID',
-                    help="Integer value of device to use for output, see 'listdevices.'")
-
-parser.add_argument('-f', '--fft-size', action='store', type=int, metavar='SIZE',
-                    default=16384, choices=[4096, 8192, 16384, 32768, 65536, 131072],
-                    help=('Select the size of the fft sample. '
-                          'Default is %(default)s, available choices are: [%(choices)s].'))
-
-parser.add_argument('-x', '--xlims', nargs=2, action='store', type=int, metavar=('LOWER', 'UPPER'),
-                    default =(20, 20000),
-                    help='Magnitude axis limits in dB. Default is %(default)s.')
-
-parser.add_argument('-y', '--ylims', nargs=2, action='store', type=int, metavar=('LOWER', 'UPPER'),
-                    default =(-150, 0),
-                    help='Freq axis limits in Hz. Default is %(default)s.')
-
-args = parser.parse_args()
-
-if args.list_devices == True:
-    print(sd.query_devices())
-    exit()
+import sounddevice as sd
+from bokeh.client import push_session
+from bokeh.plotting import figure, curdoc
+from bokeh.models import ColumnDataSource
+from numpy import fft, zeros_like
+from random import random
+from tornado import gen
 
 
+class plot_control:
 
-# The Queue where the input data will be stored.
-indataQ = deque(maxlen=10)
+    def __init__(self, args):
 
-class plot_controls():
 
-    def __init__(self):
         # Determine the frequencies the dfft calculates at.
         self.freq = fft.rfftfreq(args.fft_size, 1 / args.sample_rate)
         self.mag = zeros_like(self.freq)
         # Setup the display:
+        self.source = ColumnDataSource(data=dict(x=[1000], y=[1]))
+        self.doc = curdoc()
+
         self.fig = figure(title='Spectrum',
-                     # tools='crosshair',
-                     x_axis_label='Freq (Hz)', x_axis_type = 'log',
-                     y_axis_label='Mag (dB)')
-        self.data = self.fig.circle(self.freq, self.mag, size=2)
-        # self.session = push_session(curdoc())
+                          # tools='crosshair',
+                          x_axis_label='Freq (Hz)', x_axis_type='log',
+                          y_axis_label='Mag (dB)',
+                          x_range=[20, 20000], y_range=[-5, 5],)
+
+        self.data = self.fig.circle(x='x', y='y', size=50,
+                                    source=self.source)
+        self.doc.add_root(self.fig)
         print('Plot initialized.')
 
-    def start_plot(self):
+    def plot_callback(self, newdata):
+        self.source.stream(newdata)
 
-        def plot_callback():
-            self.mag += 0.1
-            newdata = {'x':self.freq, 'y':self.mag}
-            self.data.data_source.data = newdata
-        curdoc().add_root(column(self.fig))
-        curdoc().add_periodic_callback(plot_callback, 1000)
-        print('Plot started.')
+    def update_plot(self):
+        print('hey.')
+        self.freq = self.frew
+        self.mag = self.mag + 1
+        newdata = {'x': self.freq, 'y': self.mag}
+        self.doc.add_next_tick_callback(partial(self.plot_callback, newdata))
+
+    def start_plot(self):
+        # self.session.show(self.fig)
+        pass
 
     def stop_plot(self):
         pass
 
-class stream_controls():
+
+class audio_interface:
 
     def __init__(self):
+        pass
 
+    def create_stream(self, args, indataQ):
         # Some aliases to make things readable.
         LEFT = 0
         RIGHT = 1
@@ -105,39 +76,12 @@ class stream_controls():
 
     def start_stream(self):
         self.audio_stream.start()
-        while self.audio_stream.stopped == True:
+        while self.audio_stream.stopped is True:
             pass
-        print('Stream started.' )
+        print('Stream started.')
 
     def stop_stream(self):
         self.audio_stream.stop()
 
     def close_stream(self):
         self.audio_stream.close()
-
-def main():
-    # stream = stream_controls()
-    # stream.start_stream()
-    plot = plot_controls()
-    plot.start_plot()
-    # w = input('Enter to kill...')
-    # stream.close_stream()
-    # plot.stop_plot()
-    # stream.start_plot()
-
-
-def loop():
-    while True:
-        control = input("Enter 'q' to quit, 'l' to list devices")
-
-        if control == 'q':
-            exit()
-        elif control == 'l':
-            print(sd.query_devices())
-            continue
-
-        else:
-            continue
-
-main()
-loop()
