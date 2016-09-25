@@ -2,11 +2,11 @@ import sys
 
 import sounddevice as sd
 
-from argumentHandler import arg_handler
-from fftanalyzer import audio_stream, fft_display
+from argument_handler import ArgHandler
+from fft_analyzer import AudioStream, FFTDisplay
 
 
-args = arg_handler(sys.argv)
+args = ArgHandler(sys.argv)
 # print(args)
 # exit()
 if args.list_devices is True:
@@ -15,8 +15,8 @@ if args.list_devices is True:
 
 
 def main():
-    stream = audio_stream(args)
-    plot = fft_display(args)
+    stream = AudioStream(args)
+    plot = FFTDisplay(args)
     plot.start_plot()
     while True:
         control = input("Enter 'q' to quit, 'l' to list devices, "

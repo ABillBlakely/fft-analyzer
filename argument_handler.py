@@ -3,7 +3,7 @@ import argparse
 description = '''A realtime fft analyzer for python.'''
 
 
-def arg_handler(argv):
+def ArgHandler(argv):
 
     parser = argparse.ArgumentParser(description=description)
 

@@ -15,7 +15,7 @@ indataQ = deque(maxlen=10)
 seterr(divide='ignore')
 
 
-class audio_stream():
+class AudioStream():
     '''Creates stream and plot, performs math, starts and stops processing.'''
 
     def __init__(self, args):
@@ -33,7 +33,7 @@ class audio_stream():
                                       clip_off=True,
                                       dither_off=args.dither)
 
-    def output_signal(freq, Fs, buf_size):
+    def output_signal(freq, Fs, buf_size,):
         '''Create the signal for output'''
         None
 
@@ -54,7 +54,7 @@ class audio_stream():
         print('plot started.')
 
 
-class fft_display():
+class FFTDisplay():
 
     def __init__(self, args):
         self.args = args
