@@ -9,7 +9,7 @@ from fft_analyzer import AudioStream, FFTDisplay
 args = ArgHandler(sys.argv)
 # print(args)
 # exit()
-if args.list_devices is True:
+if args.list_devices:
     print(sd.query_devices())
     exit()
 
