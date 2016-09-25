@@ -16,7 +16,7 @@ seterr(divide='ignore')
 
 
 class AudioStream():
-    '''Creates stream and plot, performs math, starts and stops processing.'''
+    '''Controls the audio input and output.'''
 
     def __init__(self, args):
 
@@ -55,7 +55,7 @@ class AudioStream():
 
 
 class FFTDisplay():
-
+    '''Handles the display of the audio information.'''
     def __init__(self, args):
         self.args = args
         # Determine the frequencies the dfft calculates at.
@@ -76,15 +76,12 @@ class FFTDisplay():
         '''Calculates and draws the new data.'''
         try:
             a_in = indataQ.popleft()
-            xform = fft.rfft(a_in, n=self.args.fft_size)
-            mag = xform * 2 / self.args.buff_size
-            mag_in_dB = 20 * log10(abs(mag))
+            mag_in_dB = 20 * log10(abs(
+                        fft.rfft(a_in, n=self.args.fft_size)
+                        * 2 / self.args.buff_size))
             self.line.set_data(self.freq, mag_in_dB)
         except IndexError:
             # Occurs when indataQ is empty.
-            pass
-        except RuntimeWarning:
-            # Is thrown when the input data contains a zero.
             pass
         return self.line,
 
