@@ -31,6 +31,7 @@ class AudioStream():
                 else:
                     outdata.fill(0)
                 cumulated_status |= status
+                return None
 
         # Checks will throw errors for invalid settings.
         sd.check_input_settings()
@@ -47,30 +48,51 @@ class AudioStream():
                                       clip_off=True,
                                       dither_off=args.dither)
 
-    def create_output_signal(self, freq=1000, level=0.98):
-        '''Constructs array for global out_sig.'''
+    def create_output_signal(self, freq=1000, level=-3, type='sine'):
+        '''Constructs array for global out_sig.
+        Will eventually construct multiple signal types.
+        Currently this only builds sine waves that are periodic
+        in our buffer size. It finds the closest frequency to the
+        specified frequency.
+
+        takes inputs:
+            freq: frequency in Hz.
+            level: signal level in dB.
+            type: Currently only supports sine waves.
+        '''
         global out_sig
+
+        if out_enable:
+            retoggle = True
+            self.toggle_out()
+
         freq_array = fft.rfftfreq(n=self.args.buff_size,
                                   d=(1 / self.args.sample_rate))
         mag_array = np.zeros_like(freq_array)
         closest_freq = np.searchsorted(freq_array, freq)
-        mag_array[closest_freq] = level * self.args.buff_size / 2
-        output = np.fft.irfft(a=mag_array, n=self.args.buff_size)
-        out_sig = output.copy()
-        return(output)
+        mag_array[closest_freq] = 10**(level / 20) * self.args.buff_size / 2
+        out_sig = np.fft.irfft(a=mag_array, n=self.args.buff_size)
+        if retoggle:
+            self.toggle_out()
+
+        return out_sig
 
     def start_stream(self):
         self.create_output_signal()
         self.audio_stream.start()
+        while self.audio_stream.stopped:
+            pass
+        return self.audio_stream.active
 
     def toggle_out(self):
         self.out_enable = not self.out_enable
-        return(self.out_enable)
+        return self.out_enable
 
     def stop_stream(self):
-        global cumulated_status
         self.audio_stream.stop()
-        print(str(cumulated_status))
+        while self.audio_stream.active:
+            pass
+        return self.audio_stream.stopped
 
     def reload(self):
         self.audio_stream.close()
@@ -81,10 +103,16 @@ class AudioStream():
         print('re-init.')
         self.start_plot()
         print('plot started.')
+        return None
 
 
 class FFTDisplay():
-    '''Handles the display of the audio information.'''
+    '''Handles the display of the audio information.
+
+    Currently this is using matplotlib to provide display duties,
+    but this is temporary and will be replaced with something GUI
+    compatible when work begins in earnest on GUI.
+    '''
     def __init__(self, args):
         self.args = args
         # Determine the frequencies the dfft calculates at.
@@ -124,4 +152,4 @@ class FFTDisplay():
                                   blit=True
                                   )
         plt.show()
-        # while self.audio_stream.active:
+        return None
