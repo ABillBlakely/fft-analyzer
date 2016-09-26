@@ -12,9 +12,9 @@ RIGHT = 1
 
 # The Queue where the input data will be stored.
 indataQ = deque(maxlen=10)
-out_sig = None
+
+# Turn off numpy warning on divide by zero:
 seterr(divide='ignore')
-cumulated_status = sd.CallbackFlags()
 
 
 class AudioStream():
@@ -24,13 +24,12 @@ class AudioStream():
 
         def audio_callback(indata, outdata, frames, time, status):
                 '''Called by audio stream for each new buffer.'''
-                global cumulated_status
                 indataQ.append(indata[::, LEFT])
                 if self.out_enable:
-                    outdata[:, LEFT] = out_sig
+                    outdata[:, LEFT] = self.out_sig
                 else:
                     outdata.fill(0)
-                cumulated_status |= status
+                self.cumulated_status |= status
                 return None
 
         # Checks will throw errors for invalid settings.
@@ -39,6 +38,11 @@ class AudioStream():
 
         self.args = args
         self.out_enable = False
+
+        # Will store sounddevice status flags on buffer under/overflows, etc.
+        self.cumulated_status = sd.CallbackFlags()
+        # Will store data to write to output buffer.
+        self.out_sig = None
 
         # Create the stream
         self.audio_stream = sd.Stream(callback=audio_callback,
@@ -60,22 +64,23 @@ class AudioStream():
             level: signal level in dB.
             type: Currently only supports sine waves.
         '''
-        global out_sig
 
-        if out_enable:
+        if self.out_enable:
             retoggle = True
             self.toggle_out()
+        else:
+            retoggle = False
 
         freq_array = fft.rfftfreq(n=self.args.buff_size,
                                   d=(1 / self.args.sample_rate))
         mag_array = np.zeros_like(freq_array)
         closest_freq = np.searchsorted(freq_array, freq)
         mag_array[closest_freq] = 10**(level / 20) * self.args.buff_size / 2
-        out_sig = np.fft.irfft(a=mag_array, n=self.args.buff_size)
+        self.out_sig = np.fft.irfft(a=mag_array, n=self.args.buff_size)
         if retoggle:
             self.toggle_out()
 
-        return out_sig
+        return self.out_sig
 
     def start_stream(self):
         self.create_output_signal()
