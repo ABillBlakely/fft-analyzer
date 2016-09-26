@@ -1,21 +1,27 @@
 # FFT Analyzer
 
-This is some test and experiments with writing an audio analyzer using python. It is largely based on replicating the spectrum analyzer functionality of [Arta](http://artalabs.hr/), but will eventually have some features I found lacking from arta during my testing of the Zinc Box. While ARTA's primary focus seems to be on testing speakers, this project is intended to focus on testing circuits directly in loopback.
+This project consists of some tests and experiments writing an audio analyzer using python. It is largely based on replicating the spectrum analyzer functionality of [Arta](http://artalabs.hr/), but will eventually have some features I found lacking from arta during my testing of the Zinc Box. While ARTA's primary focus seems to be on testing speakers, this project is intended to focus on testing circuits directly in loopback.
+
 
 ## Recent
-- Working on replacing matplotlib with bokeh, view branch 'bokeh'
-- Improving the awful code orginazation of the present master branch, see bokeh branch for more.
+
+2016-9-26: Shifting focus from plotting to signal gen and analysis. Currently I can produce sine waves in program so now I need to measure THD and THD+N.
+
 
 ## Goals
+
 In Approximate order of priority:
 
 - [x] Display fft analysis of signals.
-- [ ] Generate sine wave and calculate the THD and THD+N.
+- [x] Generate sine wave.
+- [ ] Calculate the THD and THD+N.
 - [ ] Generate twin tone signals and calculate IMD.
 - [ ] Generate noise signal and find frequency response.
 - [ ] Determine SNR.
 
 ## Captains Log
+
+- 2016-9-26: Back on matplotlib until work on a GUI begins. Bokeh expects all the data to be there when the plot is started, so while it might be possible to use, it is very difficult to use how I want. The program can now generate sine waves and organization is improved although not perfect.
 
 - 2016-9-17: Nearly started from scratch again. Replacing the awful matplotlib library with bokeh, which so far seems pretty nice. Also improved code orginization and added an argument parser for some command line setting of options.
 
