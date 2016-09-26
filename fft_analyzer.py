@@ -52,9 +52,9 @@ class AudioStream():
                                       clip_off=True,
                                       dither_off=args.dither)
 
-    def create_output_signal(self, freq=1000, level=-3, type='sine'):
-        '''Constructs array for global out_sig.
-        Will eventually construct multiple signal types.
+    def create_output_signal(self, freq=1000, level=-3, sig_type='sine'):
+        '''Creates the array for global out_sig.
+        Should eventually handle multiple signal types.
         Currently this only builds sine waves that are periodic
         in our buffer size. It finds the closest frequency to the
         specified frequency.
@@ -62,7 +62,7 @@ class AudioStream():
         takes inputs:
             freq: frequency in Hz.
             level: signal level in dB.
-            type: Currently only supports sine waves.
+            sig_type: Currently only supports sine waves.
         '''
 
         if self.out_enable:
@@ -74,16 +74,16 @@ class AudioStream():
         freq_array = fft.rfftfreq(n=self.args.buff_size,
                                   d=(1 / self.args.sample_rate))
         mag_array = np.zeros_like(freq_array)
-        closest_freq = np.searchsorted(freq_array, freq)
-        mag_array[closest_freq] = 10**(level / 20) * self.args.buff_size / 2
+        closest_freq_index = np.searchsorted(freq_array, freq)
+        mag_array[closest_freq_index] = (10 ** (level / 20)
+                                         * self.args.buff_size / 2)
         self.out_sig = np.fft.irfft(a=mag_array, n=self.args.buff_size)
         if retoggle:
             self.toggle_out()
 
-        return self.out_sig
+        return (freq_array[closest_freq_index], level, sig_type)
 
     def start_stream(self):
-        self.create_output_signal()
         self.audio_stream.start()
         while self.audio_stream.stopped:
             pass
