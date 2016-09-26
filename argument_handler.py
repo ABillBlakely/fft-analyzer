@@ -50,13 +50,13 @@ def ArgHandler(argv):
     parser.add_argument('-x', '--xlims', nargs=2, action='store',
                         type=int, metavar=('LOWER', 'UPPER'),
                         default=(20, 20000),
-                        help=('Magnitude axis limits in dB. '
+                        help=('Frequency axis limits in Hz. '
                               'Default is %(default)s.'))
 
     parser.add_argument('-y', '--ylims', nargs=2, action='store',
                         type=int, metavar=('LOWER', 'UPPER'),
                         default=(-150, 0),
-                        help='Freq axis limits in Hz. Default is %(default)s.')
+                        help='Magnitude axis limits in dB. Default is %(default)s.')
 
     args = parser.parse_args(argv[1:])
     return(args)
