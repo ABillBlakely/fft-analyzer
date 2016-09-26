@@ -30,7 +30,15 @@ def main():
             stream.start_stream()
         else:
             continue
-        input("Press enter to stop")
-        stream.stop_stream()
+        while True:
+            control = input("Press enter to stop, 's' to toggle output: ")
+            if control == 's':
+                output_status = stream.toggle_out()
+                print('Output is {}'.format(output_status))
+            elif control == '':
+                stream.stop_stream()
+                break
+            else:
+                continue
 
 main()

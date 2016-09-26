@@ -26,7 +26,7 @@ class AudioStream():
                 '''Called by audio stream for each new buffer.'''
                 global cumulated_status
                 indataQ.append(indata[::, LEFT])
-                if out_sig.any():
+                if self.out_enable:
                     outdata[:, LEFT] = out_sig
                 else:
                     outdata.fill(0)
@@ -37,6 +37,7 @@ class AudioStream():
         sd.check_output_settings()
 
         self.args = args
+        self.out_enable = False
 
         # Create the stream
         self.audio_stream = sd.Stream(callback=audio_callback,
@@ -47,7 +48,7 @@ class AudioStream():
                                       dither_off=args.dither)
 
     def create_output_signal(self, freq=1000, level=0.98):
-        '''Return numpy array of the output signal.'''
+        '''Constructs array for global out_sig.'''
         global out_sig
         freq_array = fft.rfftfreq(n=self.args.buff_size,
                                   d=(1 / self.args.sample_rate))
@@ -61,6 +62,10 @@ class AudioStream():
     def start_stream(self):
         self.create_output_signal()
         self.audio_stream.start()
+
+    def toggle_out(self):
+        self.out_enable = not self.out_enable
+        return(self.out_enable)
 
     def stop_stream(self):
         global cumulated_status
