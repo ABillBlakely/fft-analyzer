@@ -133,9 +133,9 @@ class FFTDisplay():
     def plot_init(self):
         '''Provide blank data to the animation.'''
         self.line.set_data([], [])
-        return self.line,
+        return (self.line,)
 
-    def update_plot(self, frame):
+    def plot_callback(self, frame):
         '''Calculates and draws the new data.'''
         try:
             a_in = indataQ.popleft()
@@ -146,15 +146,16 @@ class FFTDisplay():
         except IndexError:
             # Occurs when indataQ is empty.
             pass
-        return self.line,
+        return (self.line,)
 
     def start_plot(self):
         # Start the animation
-        self.anim = FuncAnimation(self.fig,
-                                  self.update_plot,
+        self.anim = FuncAnimation(fig=self.fig,
+                                  func=self.plot_callback,
+                                  frames=None,
                                   init_func=self.plot_init,
+                                  fargs=None,
                                   interval=2,
-                                  blit=True
-                                  )
+                                  blit=True)
         plt.show()
         return None
