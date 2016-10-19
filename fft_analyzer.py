@@ -47,6 +47,7 @@ class AudioStream():
         # Create the stream
         self.audio_stream = sd.Stream(callback=audio_callback,
                                       channels=2,
+                                      device=[args.output_dev, args.input_dev],
                                       samplerate=args.sample_rate,
                                       blocksize=args.buff_size,
                                       clip_off=True,
@@ -75,8 +76,8 @@ class AudioStream():
                                   d=(1 / self.args.sample_rate))
         mag_array = np.zeros_like(freq_array)
         closest_freq_index = np.searchsorted(freq_array, freq)
-        mag_array[closest_freq_index] = (10 ** (level / 20)
-                                         * self.args.buff_size / 2)
+        mag_array[closest_freq_index] = ((10 ** (level / 20)
+                                         * self.args.buff_size / 2))
         self.out_sig = np.fft.irfft(a=mag_array, n=self.args.buff_size)
         if retoggle:
             self.toggle_out()

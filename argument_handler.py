@@ -29,12 +29,12 @@ def ArgHandler(argv):
     parser.add_argument('-l', '--list-devices', action='store_true',
                         help='View available devices for this computer.')
 
-    parser.add_argument('-i', '--input-device',  action='store',
+    parser.add_argument('-i', '--input-dev',  action='store',
                         type=int, metavar='DEV_ID',
                         help=("Integer value of device to use for input, "
                               "see 'list-devices.'"))
 
-    parser.add_argument('-o', '--output-device', action='store',
+    parser.add_argument('-o', '--output-dev', action='store',
                         type=int, metavar='DEV_ID',
                         help=("Integer value of device to use for output, "
                               "see 'listdevices.'"))
