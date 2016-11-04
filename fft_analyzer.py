@@ -32,23 +32,12 @@ class AudioStream():
                 self.cumulated_status |= status
                 return None
 
-        self.args = args
-        self.out_enable = False
-
-        sd.default.device = [args.input_dev, args.output_dev]
-        sd.default.channels = 2
-        sd.default.dtype = None
-        sd.default.latency = None
-        sd.default.samplerate = args.sample_rate
-        sd.default.blocksize = args.buff_size
-        sd.default.clip_off = True
-        sd.default.dither_off = args.dither
-        sd.default.never_drop_input = None
-        sd.default.prime_output_buffers_using_stream_callback = None
-
         # Checks will throw errors for invalid settings.
         sd.check_input_settings()
         sd.check_output_settings()
+
+        self.args = args
+        self.out_enable = False
 
         # Will store sounddevice status flags on buffer under/overflows, etc.
         self.cumulated_status = sd.CallbackFlags()
@@ -56,7 +45,13 @@ class AudioStream():
         self.out_sig = None
 
         # Create the stream
-        self.audio_stream = sd.Stream(callback=audio_callback)
+        self.audio_stream = sd.Stream(callback=audio_callback,
+                                      channels=2,
+                                      device=[args.output_dev, args.input_dev],
+                                      samplerate=args.sample_rate,
+                                      blocksize=args.buff_size,
+                                      clip_off=True,
+                                      dither_off=args.dither)
 
     def create_output_signal(self, freq=1000, level=-3, sig_type='sine'):
         '''Creates the array for global out_sig.
