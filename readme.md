@@ -14,12 +14,15 @@ In Approximate order of priority:
 
 - [x] Display fft analysis of signals.
 - [x] Generate sine wave.
+- [ ] Generate better sine.
+- [ ] Implement windowing and window selection.
 - [ ] Calculate the THD and THD+N.
 - [ ] Generate twin tone signals and calculate IMD.
 - [ ] Generate noise signal and find frequency response.
 - [ ] Determine SNR.
 
 ## Development Log
+- 2016-11-3: Basic display of FFT is working pretty well now, but we still need to implement lots of features. I hacked on a very basic sine wave generation, but it is very limited and is not very well tested. Currently the program operates much faster that ARTA which is encouraging.
 
 - 2016-9-26: Back on matplotlib until work on a GUI begins. Bokeh expects all the data to be there when the plot is started, so while it might be possible to use, it is very difficult to use how I want. The program can now generate sine waves and organization is improved although not perfect.
 
