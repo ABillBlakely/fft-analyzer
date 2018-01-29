@@ -1,7 +1,8 @@
 import sys
 
 import sounddevice as sd
-
+import matplotlib
+# matplotlib.use('Wxagg')
 from argument_handler import ArgHandler
 from fft_analyzer import AudioStream, FFTDisplay
 

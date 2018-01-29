@@ -23,18 +23,21 @@ class AudioStream():
     def __init__(self, args):
 
         def audio_callback(indata, outdata, frames, time, status):
-                '''Called by audio stream for each new buffer.'''
-                indataQ.append(indata[::, LEFT])
-                if self.out_enable:
-                    outdata[:, LEFT] = self.out_sig
-                else:
-                    outdata.fill(0)
-                self.cumulated_status |= status
-                return None
+            '''Called by audio stream for each new buffer.'''
+            indataQ.append(indata[::, LEFT])
+            if self.out_enable:
+                outdata[:, LEFT] = self.out_deque[0]
+                self.out_deque.rotate(-1)
+            else:
+                outdata.fill(0)
+            self.cumulated_status |= status
+            return None
 
         self.args = args
         self.out_enable = False
 
+        fft_window = np.hanning(self.args.buff_size)
+        # Setup the stream
         sd.default.device = [args.input_dev, args.output_dev]
         sd.default.channels = 2
         sd.default.dtype = None
@@ -53,7 +56,7 @@ class AudioStream():
         # Will store sounddevice status flags on buffer under/overflows, etc.
         self.cumulated_status = sd.CallbackFlags()
         # Will store data to write to output buffer.
-        self.out_sig = None
+        self.out_deque = deque()
 
         # Create the stream
         self.audio_stream = sd.Stream(callback=audio_callback)
@@ -62,28 +65,52 @@ class AudioStream():
         '''Creates the array for global out_sig.
         Should eventually handle multiple signal types.
         Currently this only builds sine waves that are periodic
-        in our buffer size. It finds the closest frequency to the
-        specified frequency.
+        in our buffer size multiplied by a precision value.
+        It finds the closest frequency to the specified frequency which
+        can be transformd via inverse fft.
 
-        takes inputs:
-            freq: frequency in Hz.
-            level: signal level in dB.
-            sig_type: Currently only supports sine waves.
+        Arguments:
+            freq (float): frequency in Hz.
+            level (float): signal level in dB.
+            sig_type (string): Currently only supports sine waves.
+        Returns:
+            (float): actual frequency in Hz.
+            (float): signal level in dB.
+            (str): the signal type.
+        The generated output signal is written to the class level out_deque
+        in pieces that are each equal to a buffer size.
         '''
-
+        # Precision affects how closely we match the desired signal frequency.
+        precision = int(2**16 / self.args.buff_size)
+        # Turn output off while switching,
+        # but remember if it should turn back on
         if self.out_enable:
             retoggle = True
             self.toggle_out()
         else:
             retoggle = False
 
-        freq_array = fft.rfftfreq(n=self.args.buff_size,
+        # Build frequency array zero padded for increased freq resolution.
+        freq_array = fft.rfftfreq(n=precision * self.args.buff_size,
                                   d=(1 / self.args.sample_rate))
-        mag_array = np.zeros_like(freq_array)
+        # Find nearest frequency that is represented in the array
         closest_freq_index = np.searchsorted(freq_array, freq)
+        # Construct zero valued magnitude array.
+        mag_array = np.zeros_like(freq_array)
+        # set magnitude scaled up to what it should be in frequency domain.
         mag_array[closest_freq_index] = ((10 ** (level / 20)
+                                         * precision
                                          * self.args.buff_size / 2))
-        self.out_sig = np.fft.irfft(a=mag_array, n=self.args.buff_size)
+        # Get discrete sample array of length = precision * buff_size.
+        out_sig = np.fft.irfft(a=mag_array, n=precision * self.args.buff_size)
+        # Build the output deque in slices each equal to the buffer size.
+        index = 0
+        self.out_deque = deque()
+        for index in range(int(len(out_sig) / self.args.buff_size)):
+            self.out_deque.append(out_sig[index * self.args.buff_size:
+                                  (index + 1) * self.args.buff_size])
+
+        # Turn output back on if necessary
         if retoggle:
             self.toggle_out()
 
@@ -139,20 +166,23 @@ class FFTDisplay():
     def plot_init(self):
         '''Provide blank data to the animation.'''
         self.line.set_data([], [])
-        return (self.line,)
+        return [self.line]
 
     def plot_callback(self, frame):
         '''Calculates and draws the new data.'''
         try:
+            print(indataQ[0])
             a_in = indataQ.popleft()
             mag_in_dB = 20 * log10(abs(
                         fft.rfft(a=a_in, n=self.args.fft_size)
                         * 2 / self.args.buff_size))
             self.line.set_data(self.freq, mag_in_dB)
-        except IndexError:
-            # Occurs when indataQ is empty.
+        except IndexError as err:
+            # Occurs when indataQ is empty, hold current data.
+            # self.line.set_data(self.freq, self.freq)
+            # print(err)
             pass
-        return (self.line,)
+        return [self.line]
 
     def start_plot(self):
         # Start the animation
@@ -161,7 +191,8 @@ class FFTDisplay():
                                   frames=None,
                                   init_func=self.plot_init,
                                   fargs=None,
-                                  interval=2,
-                                  blit=True)
+                                  interval=20,
+                                  blit=True,
+                                  repeat=False)
         plt.show()
         return None

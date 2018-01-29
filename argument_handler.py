@@ -13,10 +13,10 @@ def ArgHandler(argv):
                         help=('Buffer size of audio stream. '
                               'Available options are [%(choices)s]'))
 
+    # Beware double negative: toggles sound devices
+    # 'dither_off' so false here turns dithering on.
     parser.add_argument('-d', '--dither', action='store_false',
                         help='Turn dithering on.')
-                        # Beware double negative: toggles sound devices
-                        # 'dither_off' so false here turns dithering on.
 
     parser.add_argument('-s', '--sample-rate', action='store',
                         type=int, metavar='RATE',
