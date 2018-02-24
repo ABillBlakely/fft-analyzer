@@ -132,15 +132,13 @@ class AudioStream():
             pass
         return self.audio_stream.stopped
 
-    def reload(self):
+    def reload(self, args):
         self.audio_stream.close()
         print('audio closed.')
         plt.close()
         print('plot closed.')
-        self.__init__()
-        print('re-init.')
-        self.start_plot()
-        print('plot started.')
+        self.__init__(args)
+        print('re-initialized.')
         return None
 
 

@@ -11,6 +11,7 @@ def ArgHandler(argv):
                         type=int, metavar='SIZE',
                         default=4096, choices=[512, 1024, 2048, 4096],
                         help=('Buffer size of audio stream. '
+                              'Default is %(default)s, '
                               'Available options are [%(choices)s]'))
 
     # Beware double negative: toggles sound devices

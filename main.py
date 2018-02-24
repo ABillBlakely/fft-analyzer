@@ -25,6 +25,10 @@ RIGHT = 1
 # Declared in global scope for now.
 indataQ = deque(maxlen=10)
 
+a_in = [0, 0]
+
+current_unit = 'dBFS'
+
 # Turn off numpy warning on divide by zero:
 np.seterr(divide='ignore')
 
@@ -169,7 +173,7 @@ if __name__ == '__main__':
 
     app = dash.Dash()
 
-    app.layout = html.Div(children=[
+    app.layout = html.Div(id='Body', children=[
         html.H1(children="Plotly/Dash FFT analyzer"),
 
         html.Div(children='''
@@ -187,7 +191,15 @@ if __name__ == '__main__':
 
         dcc.Interval(id='interval', interval=100, n_intervals=0),
 
+        html.Div(id='Average')
         ])
+
+    @app.callback(
+        dd.Output(component_id='Average', component_property='children'),
+        [dd.Input(component_id='interval', component_property='n_intervals')])
+    def average_display(nn):
+        rms_avg = np.sqrt(np.mean(a_in**2))
+        return 'RMS Average: {:.5} {unit}}'.format(20*np.log10(rms_avg), unit=current_unit)
 
     @app.callback(
         dd.Output(component_id='list_devices', component_property='value'),
@@ -214,7 +226,7 @@ if __name__ == '__main__':
         [dd.Input(component_id='interval', component_property='n_intervals')])
     def update_plot(nn):
         global mag_in_dB
-
+        global a_in
         try:
             a_in = indataQ.popleft() * np.blackman(args.buff_size)
             mag_in_dB = 20 * np.log10(np.abs(
@@ -232,7 +244,7 @@ if __name__ == '__main__':
                                      'range': np.log10(args.xlims)
                                      },
                            'yaxis': {'range': args.ylims,
-                                     'title': 'Magnitude [dBFS]'
+                                     'title': 'Magnitude [{unit}]'.format(unit=current_unit)
                                      }
                            }
                 }
