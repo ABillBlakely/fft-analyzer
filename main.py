@@ -25,7 +25,7 @@ RIGHT = 1
 # Declared in global scope for now.
 indataQ = deque(maxlen=10)
 
-a_in = [0, 0]
+a_in = np.array([0, 0])
 
 current_unit = 'dBFS'
 
@@ -199,7 +199,7 @@ if __name__ == '__main__':
         [dd.Input(component_id='interval', component_property='n_intervals')])
     def average_display(nn):
         rms_avg = np.sqrt(np.mean(a_in**2))
-        return 'RMS Average: {:.5} {unit}}'.format(20*np.log10(rms_avg), unit=current_unit)
+        return 'RMS Average: {:.5} {unit}'.format(20*np.log10(rms_avg), unit=current_unit)
 
     @app.callback(
         dd.Output(component_id='list_devices', component_property='value'),
